@@ -1,26 +1,28 @@
-# fulltime-backend-test
+## Quick Start
+
+### Run
+
+1. Run follwing command in one terminal
 
 ```
-build a program to support following activities through command line
-interface from standard input/output
+python -m src.server
 ```
 
-Basic requirements:
-
-- Login. create a user account if not exist
-- Send. send a message to another user in the system.
-- Read. read a new message to this user.
-- Reply. reply to the current read message.
-- Forward. forward the current read message to another user.
-- Broadcast. send a broadcast message to all users in the system.
-
-Bonus requirements:
-
-1. Message threads.
-2. Viewing all messages available and choosing one to read.
+2. Run following command in one or more terminals as clients terminals
 
 ```
-1. Combining bonus task 1 and 2 in similar fashion. You can define the input/output for this.
-2. Multi-user support without a database, across different terminal sessions.
+python -m src.client
+```
+
+3. Input command in clients terminals.
+
+### Debug with Hot Reload
 
 ```
+jurigged -v src/server.py
+jurigged -v src/client.py
+```
+
+## Assumption
+
+1. Assume one message length is less than 1024 bytes.
