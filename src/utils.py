@@ -40,7 +40,7 @@ def doCommand(cmd, text, client):
     elif cmd == C.CMD_READ:
         readCommand(client)
     elif cmd == C.CMD_REPLY:
-        replyCommand(text)
+        replyCommand(text, client)
     elif cmd == C.CMD_FORWARD:
         forwardCommand(text)
     elif cmd == C.CMD_BROADCAST:
@@ -48,7 +48,6 @@ def doCommand(cmd, text, client):
 
 
 def loginCommand(text, client):
-    print(f"TODO: loginCommand start {text}")
     global clients
     global users
     lock = threading.Lock()
@@ -61,10 +60,10 @@ def loginCommand(text, client):
         client.client.send(str(client.loggedInUser.name + " " +
                            C.CMD_LOGIN_SUCCESS_MESSAGE).encode(C.ENCODING_SCHEME))
 
-    print(f"TODO: loginCommand {text}")
-
 
 def sendCommand(text, client):
+    global clients
+    global users
     lock = threading.Lock()
     with lock:
         if not checkLoggedInGuard(client):
@@ -86,8 +85,6 @@ def sendCommand(text, client):
 
         client.client.send(str(C.CMD_SEND_MESSAGE).encode(C.ENCODING_SCHEME))
 
-    print("TODO: sendCommand")
-
 
 def readCommand(client):
     global clients
@@ -104,15 +101,29 @@ def readCommand(client):
             return
 
         readMessage = messages.pop(0)
-
+        client.replyUser = readMessage.source
         client.client.send(str(getReadMessage(readMessage)
                                ).encode(C.ENCODING_SCHEME))
 
-    print("TODO: readCommand")
 
+def replyCommand(text, client):
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        if not checkLoggedInGuard(client):
+            return
 
-def replyCommand(text):
-    print("TODO: replyCommand")
+        if client.replyUser is None:
+            client.client.send(
+                (C.CMD_REPLY_MESSAGE_NO_TARGET).encode(C.ENCODING_SCHEME))
+            return
+
+        client.replyUser.messageThreads.append(MessageThread(getMessageThreadId(client.replyUser.messageThreads),
+                                                             client.loggedInUser, client.loggedInUser,  client.replyUser, text))
+
+        client.client.send(
+            (getReplyMessage(client.replyUser)).encode(C.ENCODING_SCHEME))
 
 
 def forwardCommand(text):
@@ -134,6 +145,14 @@ def checkLoggedInGuard(client):
 
 def getReadMessage(message):
     return f"from {message.source.name}: {message.message}"
+
+
+def getMessageThreadId(messages):
+    return len(messages) + 1
+
+
+def getReplyMessage(targetUser):
+    return f"message sent to {targetUser.name}"
 
 
 def printUsers():

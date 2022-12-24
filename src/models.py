@@ -1,8 +1,9 @@
 class Client:
-    def __init__(self, id, client=None, loggedInUser=None):
+    def __init__(self, id, client=None, loggedInUser=None, replyUser=None):
         self.id = id
         self.client = client
         self.loggedInUser = loggedInUser
+        self.replyUser = replyUser
 
 
 class User:
