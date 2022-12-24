@@ -16,3 +16,5 @@ CMD_UNKNOWN = 'UNKNOWN'
 
 CMD_LOGIN_SUCCESS_MESSAGE = 'logged in.'
 CMD_LOGIN_ERROR_MSSAGE = 'error: please login first.'
+CMD_SEND_MESSAGE = 'message sent.'
+CMD_SEND_MESSAGE_ERROR = 'error: cannot send a message to logged in user.'
