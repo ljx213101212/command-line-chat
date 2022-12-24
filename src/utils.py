@@ -149,7 +149,13 @@ def forwardCommand(text, client):
 
 
 def broadCastCommand(text, client):
-    print("TODO: broadCastCommand")
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        for username in users:
+            users[username].messageThreads.append(MessageThread(getMessageThreadId(
+                users[username].messageThreads), client.loggedInUser, [client.loggedInUser], users[username], text))
 
 
 def checkLoggedInGuard(client):
