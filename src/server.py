@@ -33,7 +33,7 @@ def handle(client):
 
             print(f"before do command {cmdText[0]}, {cmdText[1]}")
             U.doCommand(cmdText[0], cmdText[1], client)
-            print(f"after do command {D.users} {D.clients}")
+            #U.printUsers()
 
         except Exception as e:  # removing clients
             print(f"server handle error: {e}")
