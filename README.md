@@ -25,4 +25,5 @@ jurigged -v src/client.py
 
 ## Assumption
 
-1. Assume one message length is less than 1024 bytes.
+1. Initial data is empty.
+2. One message length is less than 1024 bytes.

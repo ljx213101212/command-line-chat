@@ -1,5 +1,4 @@
 import threading
-import uuid
 import src.constants as C
 from src.models import User, MessageThread
 import src.data as D
@@ -39,7 +38,7 @@ def doCommand(cmd, text, client):
     elif cmd == C.CMD_SEND:
         sendCommand(text, client)
     elif cmd == C.CMD_READ:
-        readCommand(text)
+        readCommand(client)
     elif cmd == C.CMD_REPLY:
         replyCommand(text)
     elif cmd == C.CMD_FORWARD:
@@ -68,9 +67,7 @@ def loginCommand(text, client):
 def sendCommand(text, client):
     lock = threading.Lock()
     with lock:
-        if client.loggedInUser is None:
-            client.client.send(
-                str(C.CMD_LOGIN_ERROR_MSSAGE).encode(C.ENCODING_SCHEME))
+        if not checkLoggedInGuard(client):
             return
         targetMessageTurple = text.split(maxsplit=1)
         target = targetMessageTurple[0]
@@ -92,7 +89,25 @@ def sendCommand(text, client):
     print("TODO: sendCommand")
 
 
-def readCommand(text):
+def readCommand(client):
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        if not checkLoggedInGuard(client):
+            return
+
+        messages = users[client.loggedInUser.name].messageThreads
+        if len(messages) == 0:
+            client.client.send(
+                str(C.CMD_READ_MESSAGE_EMPTY).encode(C.ENCODING_SCHEME))
+            return
+
+        readMessage = messages.pop(0)
+
+        client.client.send(str(getReadMessage(readMessage)
+                               ).encode(C.ENCODING_SCHEME))
+
     print("TODO: readCommand")
 
 
@@ -106,6 +121,19 @@ def forwardCommand(text):
 
 def broadCastCommand(text):
     print("TODO: broadCastCommand")
+
+
+def checkLoggedInGuard(client):
+    if client.loggedInUser is None:
+        client.client.send(
+            str(C.CMD_LOGIN_ERROR_MSSAGE).encode(C.ENCODING_SCHEME))
+        return False
+
+    return True
+
+
+def getReadMessage(message):
+    return f"from {message.source.name}: {message.message}"
 
 
 def printUsers():
