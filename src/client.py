@@ -1,23 +1,23 @@
 import socket
 import threading
-nickname = input("Choose your nickname: ")
+import src.constants as C
+import src.utils as U
 
 # socket initialization
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # connecting client to server
-client.connect(('127.0.0.1', 7976))
+client.connect((C.HOST, C.PORT))
 
 
 def receive():
     # making valid connection
     while True:
         try:
-            message = client.recv(1024).decode('ascii')
-            print('received:' + message)
-            if message == 'NICKNAME':
-                client.send(nickname.encode('ascii'))
-            else:
-                print(message)
+            message = client.recv(
+                C.MAX_MESSAGE_LENGTH).decode(C.ENCODING_SCHEME)
+            if len(message) == 0:
+                raise Exception("message is empty")
+            print(message)
         # case on wrong ip/port details
         except:
             print("An error occured!")
@@ -28,8 +28,13 @@ def receive():
 def write():
     # message layout
     while True:
-        message = '{}: {}'.format(nickname, input(''))
-        client.send(message.encode('ascii'))
+        inputCommand = input('')
+        cmdText = U.parseCommand(inputCommand)
+
+        if (cmdText[0] == C.CMD_UNKNOWN):
+            print("Unknown Command!")
+            continue
+        client.send(inputCommand.encode('ascii'))
 
 
 # receiving multiple messages

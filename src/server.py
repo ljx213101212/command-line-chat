@@ -1,35 +1,47 @@
 import socket
-import threading  # Libraries import
-
-host = '127.0.0.1'  # LocalHost
-port = 7976  # Choosing unreserved port
+import threading
+import uuid
+import src.constants as C
+from src.models import Client
+import src.utils as U
+import src.data as D
 
 # socket initialization
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((host, port))  # binding host and port to socket
+# binding host and port to socket
+server.bind((C.HOST, C.PORT))
 server.listen()
-
-clients = []
-nicknames = []
 
 
 def broadcast(message):  # broadcast function declaration
-    for client in clients:
-        client.send(message)
+    for client in D.clients:
+        client.client.send(message)
 
 
 def handle(client):
     while True:
         try:  # recieving valid messages from client
-            message = client.recv(1024)
-            broadcast(message)
-        except:  # removing clients
-            index = clients.index(client)
-            clients.remove(client)
-            client.close()
-            nickname = nicknames[index]
-            broadcast('{} left!'.format(nickname).encode('ascii'))
-            nicknames.remove(nickname)
+            message = client.client.recv(
+                C.MAX_MESSAGE_LENGTH).decode(C.ENCODING_SCHEME)
+            if len(message) == 0:
+                raise Exception()
+
+            cmdText = U.parseCommand(message)
+            if (cmdText[0] == C.CMD_UNKNOWN):
+                print("Unknown Command!")
+                continue
+
+            print(f"before do command {cmdText[0]}, {cmdText[1]}")
+            U.doCommand(cmdText[0], cmdText[1], client)
+            print(f"after do command {D.users} {D.clients}")
+
+        except Exception as e:  # removing clients
+            print(f"server handle error: {e}")
+            index = next((i for i, cli in enumerate(
+                D.clients) if cli.id == client.id), -1)
+            if index >= 0:
+                D.clients.pop()
+            client.client.close()
             break
 
 
@@ -37,15 +49,18 @@ def receive():  # accepting multiple clients
     while True:
         client, address = server.accept()
         print("Connected with {}".format(str(address)))
-        client.send('NICKNAME'.encode('ascii'))
-        nickname = client.recv(1024).decode('ascii')
-        nicknames.append(nickname)
-        clients.append(client)
-        print("Nickname is {}".format(nickname))
-        broadcast("{} joined!".format(nickname).encode('ascii'))
-        client.send('Connected to server!'.encode('ascii'))
-        thread = threading.Thread(target=handle, args=(client,))
+        client.send(C.CMD_WELCOME.encode(C.ENCODING_SCHEME))
+        clientObj = Client(uuid.uuid4(), client, None)
+        D.clients.append(clientObj)
+        thread = threading.Thread(target=handle, args=(clientObj,))
         thread.start()
 
 
-receive()
+if __name__ == "__main__":
+    print("Start Server in {}".format(str(C.HOST) + ":" + str(C.PORT)))
+    receive()
+
+# broadcast("{} joined!".format(nickname).encode(C.ENCODING_SCHEME))
+# client.send('Connected to server!'.encode(C.ENCODING_SCHEME))
+# broadcast(message)
+#
