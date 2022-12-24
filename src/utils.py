@@ -40,15 +40,14 @@ def doCommand(cmd, text, client):
     elif cmd == C.CMD_READ:
         readCommand(client)
     elif cmd == C.CMD_REPLY:
-        replyCommand(text)
+        replyCommand(text, client)
     elif cmd == C.CMD_FORWARD:
-        forwardCommand(text)
+        forwardCommand(text, client)
     elif cmd == C.CMD_BROADCAST:
-        broadCastCommand(text)
+        broadCastCommand(text, client)
 
 
 def loginCommand(text, client):
-    print(f"TODO: loginCommand start {text}")
     global clients
     global users
     lock = threading.Lock()
@@ -61,10 +60,10 @@ def loginCommand(text, client):
         client.client.send(str(client.loggedInUser.name + " " +
                            C.CMD_LOGIN_SUCCESS_MESSAGE).encode(C.ENCODING_SCHEME))
 
-    print(f"TODO: loginCommand {text}")
-
 
 def sendCommand(text, client):
+    global clients
+    global users
     lock = threading.Lock()
     with lock:
         if not checkLoggedInGuard(client):
@@ -82,11 +81,9 @@ def sendCommand(text, client):
             users[target] = User(target, [])
 
         users[target].messageThreads.append(MessageThread(
-            len(users[target].messageThreads) + 1, client.loggedInUser, client.loggedInUser, users[target], message))
+            len(users[target].messageThreads) + 1, client.loggedInUser, [client.loggedInUser], users[target], message))
 
         client.client.send(str(C.CMD_SEND_MESSAGE).encode(C.ENCODING_SCHEME))
-
-    print("TODO: sendCommand")
 
 
 def readCommand(client):
@@ -104,22 +101,54 @@ def readCommand(client):
             return
 
         readMessage = messages.pop(0)
-
+        client.currentMessage = readMessage
         client.client.send(str(getReadMessage(readMessage)
                                ).encode(C.ENCODING_SCHEME))
 
-    print("TODO: readCommand")
+
+def replyCommand(text, client):
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        if not checkLoggedInGuard(client):
+            return
+
+        if client.currentMessage is None:
+            client.client.send(
+                (C.CMD_REPLY_MESSAGE_NO_TARGET).encode(C.ENCODING_SCHEME))
+            return
+
+        for currentMessageUser in client.currentMessage.sources:
+            currentMessageUser.messageThreads.append(MessageThread(getMessageThreadId(currentMessageUser.messageThreads),
+                                                                   client.loggedInUser, [client.loggedInUser],  currentMessageUser, text))
+
+        client.client.send(
+            (getReplyMessage(client.currentMessage.sources)).encode(C.ENCODING_SCHEME))
 
 
-def replyCommand(text):
-    print("TODO: replyCommand")
+def forwardCommand(text, client):
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        if client.currentMessage is None:
+            client.client.send(
+                (C.CMD_REPLY_MESSAGE_NO_TARGET).encode(C.ENCODING_SCHEME))
+            return
+        if text not in users:
+            users[text] = User(text, [])
+
+        targetUser = users[text]
+        client.currentMessage.sources.append(client.loggedInUser)
+        targetUser.messageThreads.append(MessageThread(getMessageThreadId(
+            targetUser.messageThreads), client.currentMessage.createdBy, client.currentMessage.sources, targetUser, client.currentMessage.message))
+
+        client.client.send(
+            (getForwardMessage(targetUser)).encode(C.ENCODING_SCHEME))
 
 
-def forwardCommand(text):
-    print("TODO: forwardCommand")
-
-
-def broadCastCommand(text):
+def broadCastCommand(text, client):
     print("TODO: broadCastCommand")
 
 
@@ -133,7 +162,21 @@ def checkLoggedInGuard(client):
 
 
 def getReadMessage(message):
-    return f"from {message.source.name}: {message.message}"
+    usersStr = ",".join([user.name for user in message.sources])
+    return f"from {usersStr}: {message.message}"
+
+
+def getMessageThreadId(messages):
+    return len(messages) + 1
+
+
+def getReplyMessage(targetUsers):
+    usersStr = ",".join([user.name for user in targetUsers])
+    return f"message sent to {usersStr}"
+
+
+def getForwardMessage(targetUser):
+    return f"message forwarded to {targetUser.name}"
 
 
 def printUsers():
@@ -148,4 +191,6 @@ def printUsers():
             threads = users[key].messageThreads
             for message in threads:
                 print(
-                    f"id: {message.id} , createdBy: {message.createdBy.name}, source: {message.source.name}, target: {message.target.name}, message: {message.message}")
+                    f"id: {message.id} , createdBy: {message.createdBy.name}, target: {message.target.name}, message: {message.message}")
+                for source in message.sources:
+                    print(f"source: {source.name}")

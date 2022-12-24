@@ -1,8 +1,9 @@
 class Client:
-    def __init__(self, id, client=None, loggedInUser=None):
+    def __init__(self, id, client=None, loggedInUser=None, currentMessage=None):
         self.id = id
         self.client = client
         self.loggedInUser = loggedInUser
+        self.currentMessage = currentMessage
 
 
 class User:
@@ -12,9 +13,9 @@ class User:
 
 
 class MessageThread:
-    def __init__(self, id, createdBy, source, target, message):
+    def __init__(self, id, createdBy, sources, target, message):
         self.id = id
         self.createdBy = createdBy
-        self.source = source
+        self.sources = sources
         self.target = target
         self.message = message
