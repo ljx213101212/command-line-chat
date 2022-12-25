@@ -3,20 +3,16 @@ import threading
 import uuid
 import traceback
 import src.constants as C
-from src.models import Client
-import src.utils as U
 import src.data as D
+import src.command as COM
+import src.utils as U
+from src.models import Client
 
 # socket initialization
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # binding host and port to socket
 server.bind((C.HOST, C.PORT))
 server.listen()
-
-
-def broadcast(message):  # broadcast function declaration
-    for client in D.clients:
-        client.client.send(message)
 
 
 def handle(client):
@@ -27,13 +23,11 @@ def handle(client):
             if len(message) == 0:
                 raise Exception()
 
-            cmdText = U.parseCommand(message)
-            if (cmdText[0] == C.CMD_UNKNOWN):
-                print("Unknown Command!")
+            cmd, text = COM.parseCommand(message)
+            if not U.checkIsKnownCommand(cmd):
                 continue
-
-            print(f"before do command {cmdText[0]}, {cmdText[1]}")
-            U.doCommand(cmdText[0], cmdText[1], client)
+            print(f"before do command {cmd}, {text}")
+            COM.doCommand(cmd, text, client)
             # U.printUsers()
 
         except Exception as e:  # removing clients
@@ -50,7 +44,7 @@ def receive():  # accepting multiple clients
     while True:
         client, address = server.accept()
         print("Connected with {}".format(str(address)))
-        client.send(C.CMD_WELCOME.encode(C.ENCODING_SCHEME))
+        U.send(client, C.CMD_WELCOME)
         clientObj = Client(uuid.uuid4(), client, None)
         D.clients.append(clientObj)
         thread = threading.Thread(target=handle, args=(clientObj,))
@@ -60,8 +54,3 @@ def receive():  # accepting multiple clients
 if __name__ == "__main__":
     print("Start Server in {}".format(str(C.HOST) + ":" + str(C.PORT)))
     receive()
-
-# broadcast("{} joined!".format(nickname).encode(C.ENCODING_SCHEME))
-# client.send('Connected to server!'.encode(C.ENCODING_SCHEME))
-# broadcast(message)
-#

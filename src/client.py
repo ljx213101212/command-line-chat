@@ -1,6 +1,7 @@
 import socket
 import threading
 import src.constants as C
+import src.command as COM
 import src.utils as U
 
 # socket initialization
@@ -26,15 +27,13 @@ def receive():
 
 
 def write():
-    # message layout
     while True:
         inputCommand = input('')
-        cmdText = U.parseCommand(inputCommand)
+        cmd, _text = COM.parseCommand(inputCommand)
 
-        if (cmdText[0] == C.CMD_UNKNOWN):
-            print("Unknown Command!")
+        if not U.checkIsKnownCommand(cmd):
             continue
-        client.send(inputCommand.encode('ascii'))
+        U.send(client, inputCommand)
 
 
 # receiving multiple messages
