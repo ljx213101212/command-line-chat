@@ -38,7 +38,7 @@ def doCommand(cmd, text, client):
     elif cmd == C.CMD_SEND:
         sendCommand(text, client)
     elif cmd == C.CMD_READ:
-        readCommand(client)
+        readCommand(text, client)
     elif cmd == C.CMD_REPLY:
         replyCommand(text, client)
     elif cmd == C.CMD_FORWARD:
@@ -57,8 +57,8 @@ def loginCommand(text, client):
             users[text] = User(text, [])
 
         client.loggedInUser = users[text]
-        client.client.send(str(client.loggedInUser.name + " " +
-                           C.CMD_LOGIN_SUCCESS_MESSAGE).encode(C.ENCODING_SCHEME))
+        client.client.send(
+            str(getLoginMessage(client.loggedInUser)).encode(C.ENCODING_SCHEME))
 
 
 def sendCommand(text, client):
@@ -86,7 +86,7 @@ def sendCommand(text, client):
         client.client.send(str(C.CMD_SEND_MESSAGE).encode(C.ENCODING_SCHEME))
 
 
-def readCommand(client):
+def readCommand(text, client):
     global clients
     global users
     lock = threading.Lock()
@@ -100,7 +100,28 @@ def readCommand(client):
                 str(C.CMD_READ_MESSAGE_EMPTY).encode(C.ENCODING_SCHEME))
             return
 
-        readMessage = messages.pop(0)
+        idx = 0
+        input = text.strip()
+        readMessage = ""
+
+        if input != "":
+            try:
+                idx = int(text) - 1
+                if (idx == -1):
+                    client.client.send(
+                        str(C.CMD_READ_MESSAGE_CANCEL).encode(C.ENCODING_SCHEME))
+                    return
+
+                if (idx < 0 or idx >= len(messages)):
+                    client.client.send(
+                        str(C.CMD_READ_MESSAGE_OUT_OF_INDEX_ERROR).encode(C.ENCODING_SCHEME))
+                    return
+            except:
+                client.client.send(
+                    str(C.CMD_READ_MESSAGE_BAD_FORMAT_ERROR).encode(C.ENCODING_SCHEME))
+                return
+
+        readMessage = messages.pop(idx)
         client.currentMessage = readMessage
         client.client.send(str(getReadMessage(readMessage)
                                ).encode(C.ENCODING_SCHEME))
@@ -149,7 +170,13 @@ def forwardCommand(text, client):
 
 
 def broadCastCommand(text, client):
-    print("TODO: broadCastCommand")
+    global clients
+    global users
+    lock = threading.Lock()
+    with lock:
+        for username in users:
+            users[username].messageThreads.append(MessageThread(getMessageThreadId(
+                users[username].messageThreads), client.loggedInUser, [client.loggedInUser], users[username], text))
 
 
 def checkLoggedInGuard(client):
@@ -161,9 +188,19 @@ def checkLoggedInGuard(client):
     return True
 
 
+def getLoginMessage(loggedInUser):
+    basic = f"{loggedInUser.name} logged in, {len(loggedInUser.messageThreads)} new messages."
+    advance = f""
+    if len(loggedInUser.messageThreads) > 1:
+        advance = f"Choose a number from {1} to {len(loggedInUser.messageThreads)} to pick the message to read.Pick 0 to cancel."
+    return str(basic + advance)
+
+
 def getReadMessage(message):
     usersStr = ",".join([user.name for user in message.sources])
-    return f"from {usersStr}: {message.message}"
+    basic = f"from {usersStr}: {message.message}"
+    advance = f"message thread #{message.id}\n"
+    return str(advance + basic)
 
 
 def getMessageThreadId(messages):

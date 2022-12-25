@@ -1,6 +1,7 @@
 import socket
 import threading
 import uuid
+import traceback
 import src.constants as C
 from src.models import Client
 import src.utils as U
@@ -33,10 +34,10 @@ def handle(client):
 
             print(f"before do command {cmdText[0]}, {cmdText[1]}")
             U.doCommand(cmdText[0], cmdText[1], client)
-            #U.printUsers()
+            # U.printUsers()
 
         except Exception as e:  # removing clients
-            print(f"server handle error: {e}")
+            print(traceback.format_exc())
             index = next((i for i, cli in enumerate(
                 D.clients) if cli.id == client.id), -1)
             if index >= 0:
