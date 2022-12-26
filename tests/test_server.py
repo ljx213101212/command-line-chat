@@ -8,9 +8,6 @@ import src.command as COM
 import src.utils as U
 from src.models import User, MessageThread
 
-# Please start server before running this test suite
-# python -m src.server
-
 
 def loginUser(self, user, numOfDummyMessage):
     U.send(self.client, f"{C.CMD_LOGIN} {user.name}")
@@ -25,6 +22,9 @@ def sendMessageToUser(self, user, message):
     U.send(self.client, f"{C.CMD_SEND} {user.name} {message}")
     self.assertEqual(U.receive(self.client),
                      C.CMD_SEND_MESSAGE)
+
+# Please start server before running this test suite
+# python -m src.server
 
 
 class Test_server(unittest.TestCase):

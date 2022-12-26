@@ -77,6 +77,11 @@ def sendCommand(text, client):
         if not U.checkLoggedInGuard(client):
             return
         targetMessageTurple = text.split(maxsplit=1)
+
+        if len(targetMessageTurple) < 2:
+            U.send(client.client, C.CMD_SEND_MESSAGE_NO_TARGET)
+            return
+
         target = targetMessageTurple[0]
         message = targetMessageTurple[1]
 
@@ -199,5 +204,4 @@ def debugPrint():
 
 def debugClear():
     global users
-    print("debug clear")
     users.clear()
