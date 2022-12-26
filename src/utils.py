@@ -6,6 +6,10 @@ def send(client, message):
     client.send(message.encode(C.ENCODING_SCHEME))
 
 
+def receive(client):
+    return client.recv(C.MAX_MESSAGE_LENGTH).decode()
+
+
 def checkLoggedInGuard(client):
     if client.loggedInUser is None:
         send(client.client, C.CMD_LOGIN_ERROR_MSSAGE)

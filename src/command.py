@@ -54,10 +54,14 @@ def loginCommand(text, client):
     lock = threading.Lock()
 
     with lock:
-        if text not in users:
-            users[text] = User(text, [])
+        username = text.strip()
+        if len(username) == 0:
+            U.send(client.client, C.CMD_LOGIN_USER_NAME_EMPTY_ERROR)
+            return
+        if username not in users:
+            users[username] = User(username, [])
 
-        client.loggedInUser = users[text]
+        client.loggedInUser = users[username]
         U.send(client.client, U.getLoginMessage(client.loggedInUser))
 
 
