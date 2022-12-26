@@ -29,6 +29,8 @@ def parseCommand(command):
         return (C.CMD_FORWARD, text)
     elif cmd == C.CMD_BROADCAST:
         return (C.CMD_BROADCAST, text)
+    elif cmd == C.CMD_DEBUG:
+        return (C.CMD_DEBUG, text)
     else:
         return (C.CMD_UNKNOWN, "")
 
@@ -46,6 +48,8 @@ def doCommand(cmd, text, client):
         forwardCommand(text, client)
     elif cmd == C.CMD_BROADCAST:
         broadCastCommand(text, client)
+    elif cmd == C.CMD_DEBUG:
+        debugCommand(text, client)
 
 
 def loginCommand(text, client):
@@ -54,10 +58,14 @@ def loginCommand(text, client):
     lock = threading.Lock()
 
     with lock:
-        if text not in users:
-            users[text] = User(text, [])
+        username = text.strip()
+        if len(username) == 0:
+            U.send(client.client, C.CMD_LOGIN_USER_NAME_EMPTY_ERROR)
+            return
+        if username not in users:
+            users[username] = User(username, [])
 
-        client.loggedInUser = users[text]
+        client.loggedInUser = users[username]
         U.send(client.client, U.getLoginMessage(client.loggedInUser))
 
 
@@ -69,6 +77,11 @@ def sendCommand(text, client):
         if not U.checkLoggedInGuard(client):
             return
         targetMessageTurple = text.split(maxsplit=1)
+
+        if len(targetMessageTurple) < 2:
+            U.send(client.client, C.CMD_SEND_MESSAGE_NO_TARGET)
+            return
+
         target = targetMessageTurple[0]
         message = targetMessageTurple[1]
 
@@ -150,10 +163,15 @@ def forwardCommand(text, client):
         if client.currentMessage is None:
             U.send(client.client, C.CMD_REPLY_MESSAGE_NO_TARGET)
             return
-        if text not in users:
-            users[text] = User(text, [])
 
-        targetUser = users[text]
+        username = text.strip()
+        if client.loggedInUser.name == username:
+            U.send(client.client, C.CMD_FORWARD_MESSAGE_ERROR)
+            return
+        if username not in users:
+            users[username] = User(username, [])
+
+        targetUser = users[username]
         client.currentMessage.sources.append(client.loggedInUser)
         targetUser.messageThreads.append(MessageThread(U.getMessageThreadId(
             targetUser.messageThreads), client.currentMessage.createdBy, client.currentMessage.sources, targetUser, client.currentMessage.message))
@@ -171,3 +189,19 @@ def broadCastCommand(text, client):
         for username in users:
             users[username].messageThreads.append(MessageThread(U.getMessageThreadId(
                 users[username].messageThreads), client.loggedInUser, [client.loggedInUser], users[username], text))
+
+
+def debugCommand(text, client):
+    if text == C.CMD_DEBUG_TEXT_CLEAR:
+        debugClear()
+    elif text == C.CMD_DEBUG_TEXT_PRINT:
+        debugPrint()
+
+
+def debugPrint():
+    U.printUsers()
+
+
+def debugClear():
+    global users
+    users.clear()
