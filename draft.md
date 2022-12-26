@@ -20,6 +20,6 @@ jurigged -v src/client.py
 > pip install coverage
 
 ```
-coverage run -m tests.test_server
+coverage run -m unittest tests.test_server tests.test_command
 coverage report
 ```
