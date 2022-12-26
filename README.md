@@ -29,3 +29,6 @@ python -m unittest tests.test_server
 1. Initial data is empty.
 2. One message length is less than 1024 bytes.
 3. Login username shouldn't be empty or only contains empty spaces.
+4. Added Debug command to ease unit test.
+5. Send/forward a message to current login user is not allowed.
+6. Broadcast can send message to a logged out user.
