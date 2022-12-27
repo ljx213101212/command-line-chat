@@ -18,10 +18,16 @@ python -m src.client
 
 ### Run Unit Test
 
-> start server for tests.test_server
+> start server for tests.test_server (in TAB 1)
 
 ```
 python -m src.server
+```
+
+> run unit tests (in TAB 2)
+
+```
+
 python -m unittest tests.test_server tests.test_command
 ```
 
@@ -40,14 +46,14 @@ python -m unittest tests.test_server tests.test_command
 Name                    Stmts   Miss  Cover
 -------------------------------------------
 src/__init__.py             0      0   100%
-src/command.py            144     20    86%
-src/constants.py           29      0   100%
+src/command.py            146     19    87%
+src/constants.py           31      0   100%
 src/data.py                 2      0   100%
 src/models.py              17      4    76%
-src/utils.py               44     14    68%
+src/utils.py               46     14    70%
 tests/__init__.py           0      0   100%
-tests/test_command.py     187      5    97%
-tests/test_server.py      109      1    99%
+tests/test_command.py     193      5    97%
+tests/test_server.py      163      1    99%
 -------------------------------------------
-TOTAL                     532     44    92%
+TOTAL                     598     43    93%
 ```

@@ -17,7 +17,7 @@ def receive():
             message = client.recv(
                 C.MAX_MESSAGE_LENGTH).decode(C.ENCODING_SCHEME)
             if len(message) == 0:
-                raise Exception("message is empty")
+                raise Exception
             print(message)
         # case on wrong ip/port details
         except:
