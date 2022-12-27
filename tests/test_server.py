@@ -2,6 +2,7 @@ import socket
 from subprocess import Popen, PIPE
 import threading
 import unittest
+import time
 from unittest.mock import patch
 import src.constants as C
 import src.command as COM
@@ -37,62 +38,78 @@ class Test_server(unittest.TestCase):
     user2ToUser1Message = MessageThread(1, user2, [user2], user1, MSG)
 
     def setUp(self) -> None:
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((C.HOST, C.PORT))
-        self.assertEqual(self.client.recv(
-            C.MAX_MESSAGE_LENGTH).decode(), C.CMD_WELCOME)
-        U.send(self.client, f"{C.CMD_LOGIN} {self.user1.name}")
-        self.assertEqual(U.receive(self.client),
-                         U.getLoginMessage(self.user1))
+        lock = threading.Lock()
+        with lock:
+            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.connect((C.HOST, C.PORT))
+            self.assertEqual(self.client.recv(
+                C.MAX_MESSAGE_LENGTH).decode(), C.CMD_WELCOME)
 
     def tearDown(self) -> None:
-        U.send(self.client, f"{C.CMD_DEBUG} {C.CMD_DEBUG_TEXT_CLEAR}")
-        self.client.close()
+        lock = threading.Lock()
+        with lock:
+            U.send(self.client, f"{C.CMD_DEBUG} {C.CMD_DEBUG_TEXT_CLEAR}")
+            self.client.close()
+            self.client = None
 
     def test_unknown_command(self):
-        U.send(self.client, 'unknown command')
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_UNKNOWN_COMMAND)
+        lock = threading.Lock()
+        with lock:
+            U.send(self.client, 'unknown command')
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_UNKNOWN_COMMAND)
 
     # LOGIN
     def test_login_user_name_with_empty_name(self):
-        U.send(self.client, C.CMD_LOGIN + "    ")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_LOGIN_USER_NAME_EMPTY_ERROR)
+        lock = threading.Lock()
+        with lock:
+            U.send(self.client, C.CMD_LOGIN + "    ")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_LOGIN_USER_NAME_EMPTY_ERROR)
 
     def test_login_user_name(self):
-        U.send(self.client, f"{C.CMD_LOGIN} {self.user1.name}")
+        lock = threading.Lock()
+        with lock:
+            U.send(self.client, f"{C.CMD_LOGIN} {self.user1.name}")
+            self.assertEqual(U.receive(self.client),
+                             U.getLoginMessage(self.user1))
 
-        self.assertEqual(U.receive(self.client),
-                         U.getLoginMessage(self.user1))
-
-        U.send(self.client, f"{C.CMD_LOGIN} {self.user2.name}")
-        self.assertEqual(U.receive(self.client),
-                         U.getLoginMessage(self.user2))
+            U.send(self.client, f"{C.CMD_LOGIN} {self.user2.name}")
+            self.assertEqual(U.receive(self.client),
+                             U.getLoginMessage(self.user2))
     # SEND
 
     def test_send_to_current_logged_in_user(self):
-        U.send(self.client, f"{C.CMD_SEND} {self.user1.name} {self.MSG}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_SEND_MESSAGE_ERROR)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            U.send(self.client, f"{C.CMD_SEND} {self.user1.name} {self.MSG}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_SEND_MESSAGE_ERROR)
 
     def test_send_to_another_user_who_is_not_exist(self):
-        U.send(self.client, f"{C.CMD_SEND} {self.user2.name} {self.MSG}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_SEND_MESSAGE_USER_DOES_NOT_EXIST)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            U.send(self.client, f"{C.CMD_SEND} {self.user2.name} {self.MSG}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_SEND_MESSAGE_USER_DOES_NOT_EXIST)
 
     def test_send_to_another_user_who_is_exist(self):
-        loginUser(self, self.user2, 0)
-        U.send(self.client, f"{C.CMD_SEND} {self.user1.name} {self.MSG}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_SEND_MESSAGE)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            U.send(self.client, f"{C.CMD_SEND} {self.user1.name} {self.MSG}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_SEND_MESSAGE)
 
     # READ
 
     def test_read_bad_format(self):
         lock = threading.Lock()
-
         with lock:
+            loginUser(self, self.user1, 0)
             loginUser(self, self.user2, 0)
             sendMessageToUser(self, self.user1, self.MSG)
             loginUser(self, self.user1, 1)
@@ -101,86 +118,112 @@ class Test_server(unittest.TestCase):
                              C.CMD_READ_MESSAGE_BAD_FORMAT_ERROR)
 
     def test_read_out_of_index(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
 
-        U.send(self.client, f"{C.CMD_READ} {2}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_READ_MESSAGE_OUT_OF_INDEX_ERROR)
+            U.send(self.client, f"{C.CMD_READ} {2}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_READ_MESSAGE_OUT_OF_INDEX_ERROR)
 
     # REPLY
     def test_reply_without_read_message(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_REPLY} {self.MSG}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_REPLY_MESSAGE_NO_TARGET)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_REPLY} {self.MSG}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_REPLY_MESSAGE_NO_TARGET)
 
     def test_reply(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_READ} 1")
-        self.assertEqual(U.receive(self.client),
-                         U.getReadMessage(self.user2ToUser1Message))
-        U.send(self.client, f"{C.CMD_REPLY} {self.MSG}")
-        self.assertEqual(U.receive(self.client),
-                         U.getReplyMessage([User(self.user2.name, [])]))
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_READ} 1")
+            self.assertEqual(U.receive(self.client),
+                             U.getReadMessage(self.user2ToUser1Message))
+            U.send(self.client, f"{C.CMD_REPLY} {self.MSG}")
+            self.assertEqual(U.receive(self.client),
+                             U.getReplyMessage([User(self.user2.name, [])]))
 
     # FORWARD
     def test_forward_without_read_message(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_FORWARD} {self.user2}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_FORWARD_MESSAGE_NO_TARGET)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_FORWARD} {self.user2}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_FORWARD_MESSAGE_NO_TARGET)
 
     def test_forward_current_login_user(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_READ} 1")
-        self.assertEqual(U.receive(self.client),
-                         U.getReadMessage(self.user2ToUser1Message))
-        U.send(self.client, f"{C.CMD_FORWARD} {self.user1.name}")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_FORWARD_MESSAGE_ERROR)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_READ} 1")
+            self.assertEqual(U.receive(self.client),
+                             U.getReadMessage(self.user2ToUser1Message))
+            U.send(self.client, f"{C.CMD_FORWARD} {self.user1.name}")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_FORWARD_MESSAGE_ERROR)
 
     def test_forward_to_user_who_is_not_exist(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_READ} 1")
-        self.assertEqual(U.receive(self.client),
-                         U.getReadMessage(self.user2ToUser1Message))
-        U.send(self.client, f"{C.CMD_FORWARD} someone_unknown")
-        self.assertEqual(U.receive(self.client),
-                         C.CMD_FORWARD_MESSAGE_USER_DOES_NOT_EXIST)
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_READ} 1")
+            self.assertEqual(U.receive(self.client),
+                             U.getReadMessage(self.user2ToUser1Message))
+            U.send(self.client, f"{C.CMD_FORWARD} someone_unknown")
+            self.assertEqual(U.receive(self.client),
+                             C.CMD_FORWARD_MESSAGE_USER_DOES_NOT_EXIST)
 
     def test_forward_to_user_who_is_exist(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_READ} 1")
-        self.assertEqual(U.receive(self.client),
-                         U.getReadMessage(self.user2ToUser1Message))
-        U.send(self.client, f"{C.CMD_FORWARD} {self.user2.name}")
-        self.assertEqual(U.receive(self.client),
-                         U.getForwardMessage(self.user2))
+
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_READ} 1")
+            self.assertEqual(U.receive(self.client),
+                             U.getReadMessage(self.user2ToUser1Message))
+            U.send(self.client, f"{C.CMD_FORWARD} {self.user2.name}")
+            self.assertEqual(U.receive(self.client),
+                             U.getForwardMessage(self.user2))
 
 # BROADCAST
     def test_broadcast(self):
-        loginUser(self, self.user2, 0)
-        sendMessageToUser(self, self.user1, self.MSG)
-        loginUser(self, self.user1, 1)
-        U.send(self.client, f"{C.CMD_BROADCAST} {self.MSG}")
-        loginUser(self, self.user2, 1)
-        U.send(self.client, f"{C.CMD_READ} 1")
-        self.assertEqual(U.receive(self.client),
-                         U.getReadMessage(self.user1ToUser2Message))
+        lock = threading.Lock()
+        with lock:
+            loginUser(self, self.user1, 0)
+            loginUser(self, self.user2, 0)
+            sendMessageToUser(self, self.user1, self.MSG)
+            loginUser(self, self.user1, 1)
+            U.send(self.client, f"{C.CMD_BROADCAST} {self.MSG}")
+            time.sleep(0.1)
+            loginUser(self, self.user2, 1)
+            U.send(self.client, f"{C.CMD_READ} 1")
+            self.assertEqual(U.receive(self.client),
+                             U.getReadMessage(self.user1ToUser2Message))
 
 
 if __name__ == '__main__':

@@ -20,16 +20,16 @@ def handle(client):
         try:  # recieving valid messages from client
             message = client.client.recv(
                 C.MAX_MESSAGE_LENGTH).decode(C.ENCODING_SCHEME)
+
+            # print(f"server is receiving: {message}")
             if len(message) == 0:
-                continue
+                raise Exception
 
             cmd, text = COM.parseCommand(message)
             if not U.checkIsKnownCommand(cmd):
                 U.send(client.client, C.CMD_UNKNOWN_COMMAND)
                 continue
-            # print(f"before do command {cmd}, {text}")
             COM.doCommand(cmd, text, client)
-            # U.printUsers()
 
         except Exception as e:  # removing clients
             print(traceback.format_exc())
