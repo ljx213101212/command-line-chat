@@ -52,7 +52,7 @@ class Test_server(unittest.TestCase):
     def test_unknown_command(self):
         U.send(self.client, 'unknown command')
         self.assertEqual(U.receive(self.client),
-                         C.CMD_SEND_MESSAGE_UNKNOWN)
+                         C.CMD_UNKNOWN_COMMAND)
 
     # LOGIN
     def test_login_user_name_with_empty_name(self):
@@ -76,8 +76,14 @@ class Test_server(unittest.TestCase):
         self.assertEqual(U.receive(self.client),
                          C.CMD_SEND_MESSAGE_ERROR)
 
-    def test_send_to_another_user(self):
+    def test_send_to_another_user_who_is_not_exist(self):
         U.send(self.client, f"{C.CMD_SEND} {self.user2.name} {self.MSG}")
+        self.assertEqual(U.receive(self.client),
+                         C.CMD_SEND_MESSAGE_USER_DOES_NOT_EXIST)
+
+    def test_send_to_another_user_who_is_exist(self):
+        loginUser(self, self.user2, 0)
+        U.send(self.client, f"{C.CMD_SEND} {self.user1.name} {self.MSG}")
         self.assertEqual(U.receive(self.client),
                          C.CMD_SEND_MESSAGE)
 
@@ -143,7 +149,18 @@ class Test_server(unittest.TestCase):
         self.assertEqual(U.receive(self.client),
                          C.CMD_FORWARD_MESSAGE_ERROR)
 
-    def test_forward(self):
+    def test_forward_to_user_who_is_not_exist(self):
+        loginUser(self, self.user2, 0)
+        sendMessageToUser(self, self.user1, self.MSG)
+        loginUser(self, self.user1, 1)
+        U.send(self.client, f"{C.CMD_READ} 1")
+        self.assertEqual(U.receive(self.client),
+                         U.getReadMessage(self.user2ToUser1Message))
+        U.send(self.client, f"{C.CMD_FORWARD} someone_unknown")
+        self.assertEqual(U.receive(self.client),
+                         C.CMD_FORWARD_MESSAGE_USER_DOES_NOT_EXIST)
+
+    def test_forward_to_user_who_is_exist(self):
         loginUser(self, self.user2, 0)
         sendMessageToUser(self, self.user1, self.MSG)
         loginUser(self, self.user1, 1)

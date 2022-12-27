@@ -90,7 +90,8 @@ def sendCommand(text, client):
             return
 
         if target not in users:
-            users[target] = User(target, [])
+            U.send(client.client, C.CMD_SEND_MESSAGE_USER_DOES_NOT_EXIST)
+            return
 
         users[target].messageThreads.append(MessageThread(
             len(users[target].messageThreads) + 1, client.loggedInUser, [client.loggedInUser], users[target], message))
@@ -169,7 +170,8 @@ def forwardCommand(text, client):
             U.send(client.client, C.CMD_FORWARD_MESSAGE_ERROR)
             return
         if username not in users:
-            users[username] = User(username, [])
+            U.send(client.client, C.CMD_FORWARD_MESSAGE_USER_DOES_NOT_EXIST)
+            return
 
         targetUser = users[username]
         client.currentMessage.sources.append(client.loggedInUser)

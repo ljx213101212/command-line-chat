@@ -21,11 +21,11 @@ def handle(client):
             message = client.client.recv(
                 C.MAX_MESSAGE_LENGTH).decode(C.ENCODING_SCHEME)
             if len(message) == 0:
-                raise Exception()
+                continue
 
             cmd, text = COM.parseCommand(message)
             if not U.checkIsKnownCommand(cmd):
-                U.send(client.client, C.CMD_SEND_MESSAGE_UNKNOWN)
+                U.send(client.client, C.CMD_UNKNOWN_COMMAND)
                 continue
             # print(f"before do command {cmd}, {text}")
             COM.doCommand(cmd, text, client)

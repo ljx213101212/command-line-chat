@@ -18,10 +18,16 @@ python -m src.client
 
 ### Run Unit Test
 
-> start server for tests.test_server
+> start server for tests.test_server (in TAB 1)
 
 ```
 python -m src.server
+```
+
+> run unit tests (in TAB 2)
+
+```
+
 python -m unittest tests.test_server tests.test_command
 ```
 

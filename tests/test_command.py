@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import src.constants as C
 import src.command as COM
 import src.utils as U
@@ -127,14 +127,17 @@ class Test_do_command(unittest.TestCase):
         client.client = Mock()
         client.loggedInUser = User("jack")
         U.send = Mock()
+        COM.doCommand(C.CMD_LOGIN, "rose", client)
+        COM.doCommand(C.CMD_LOGIN, "jack", client)
         COM.doCommand(C.CMD_SEND, message, client)
-        U.send.assert_called_once_with(
+        U.send.assert_called_with(
             client.client, C.CMD_SEND_MESSAGE)
 
     def test_do_read_command_out_of_index(self):
         client = Mock()
         client.client = Mock()
         U.send = Mock()
+        COM.doCommand(C.CMD_LOGIN, "jack", client)
         COM.doCommand(C.CMD_LOGIN, "rose", client)
         COM.doCommand(C.CMD_SEND, "jack hello", client)
         COM.doCommand(C.CMD_LOGIN, "jack", client)
@@ -145,7 +148,10 @@ class Test_do_command(unittest.TestCase):
     def test_do_read_command(self):
         client = Mock()
         client.client = Mock()
+        client.loggedInUser = User("Jack", [MessageThread(
+            1, User("rose"), [User("rose")], User("jack"), "hello")])
         U.send = Mock()
+        COM.doCommand(C.CMD_LOGIN, "jack", client)
         COM.doCommand(C.CMD_LOGIN, "rose", client)
         COM.doCommand(C.CMD_SEND, "jack hello", client)
         COM.doCommand(C.CMD_LOGIN, "jack", client)
@@ -169,6 +175,8 @@ class Test_do_command(unittest.TestCase):
     def test_do_reply_command(self):
         client = Mock()
         client.client = Mock()
+        client.currentMessage = MessageThread(
+            1, User("rose"), [User("rose")], User("jack"), "hello")
         U.send = Mock()
         COM.doCommand(C.CMD_LOGIN, "rose", client)
         COM.doCommand(C.CMD_SEND, "jack hello", client)
@@ -193,7 +201,8 @@ class Test_do_command(unittest.TestCase):
     def test_do_forward_command_to_current_login_user(self):
         client = Mock()
         client.client = Mock()
-        client.currentMessage = None
+        client.currentMessage = MessageThread(
+            1, User("rose"), [User("rose")], User("jack"), "hello")
         U.send = Mock()
         COM.doCommand(C.CMD_LOGIN, "rose", client)
         COM.doCommand(C.CMD_SEND, "jack hello", client)
@@ -206,7 +215,8 @@ class Test_do_command(unittest.TestCase):
     def test_do_forward_command(self):
         client = Mock()
         client.client = Mock()
-        client.currentMessage = None
+        client.currentMessage = MessageThread(
+            1, User("rose"), [User("rose")], User("jack"), "hello")
         U.send = Mock()
         COM.doCommand(C.CMD_LOGIN, "rose", client)
         COM.doCommand(C.CMD_SEND, "jack hello", client)
